@@ -102,8 +102,9 @@ def outputdt(dtevent):
     return datetime.strftime(dtevent, "%Y-%m-%d %H:%M")
 
 def showtasks(TaskList, withcomplete=False):
-    print("\n\n" + datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M") + ", " + weekdaytostring(datetime.now().weekday()) + "\nList of Current Tasks: \n\n")
-    outputlist = []
+    print("\n\n" + datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M") + ", " + weekdaytostring(datetime.now().weekday()))
+    print("Current Tasks:" if not withcomplete else "All Tasks:")
+    outputlist = [["ID", "Name", "Soft Deadline", "Hard Deadline", "Priority"]]
     
     TaskList = sorted(TaskList, reverse=True)
     
@@ -116,19 +117,19 @@ def showtasks(TaskList, withcomplete=False):
             continue
         
         if softdiff.days < 0 and harddiff.days >= 0: # red
-            outputlist.append(["\033[91m" + task.id, outputdt(task.dtsoft), outputdt(task.dthard), task.name, str(task.priority) + "\033[0m"])
+            outputlist.append(["\033[91m" + task.id, task.name, outputdt(task.dtsoft), outputdt(task.dthard), str(task.priority) + "\033[0m"])
         
         elif harddiff.days < 0: # red & bold & underline
-            outputlist.append(["\033[1m\033[91m\033[4m" + task.id, outputdt(task.dtsoft), outputdt(task.dthard), task.name, str(task.priority) + "\033[0m\033[0m\033[0m"])
+            outputlist.append(["\033[1m\033[91m\033[4m" + task.id, task.name, outputdt(task.dtsoft), outputdt(task.dthard), str(task.priority) + "\033[0m\033[0m\033[0m"])
         
         elif softdiff.days < 3 or task.delayed >= 2: # yellow
-            outputlist.append(["\033[93m" + task.id, outputdt(task.dtsoft), outputdt(task.dthard), task.name, str(task.priority) + "\033[0m"])
+            outputlist.append(["\033[93m" + task.id, task.name, outputdt(task.dtsoft), outputdt(task.dthard), str(task.priority) + "\033[0m"])
         
         elif task.delayed: # ok cyan
-            outputlist.append(["\033[96m" + task.id, outputdt(task.dtsoft), outputdt(task.dthard), task.name, str(task.priority) + "\033[0m"])
+            outputlist.append(["\033[96m" + task.id, task.name, outputdt(task.dtsoft), outputdt(task.dthard), str(task.priority) + "\033[0m"])
         
         else: # ok green
-            outputlist.append(["\033[92m" + task.id, outputdt(task.dtsoft), outputdt(task.dthard), task.name, str(task.priority) + "\033[0m"])
+            outputlist.append(["\033[92m" + task.id, task.name, outputdt(task.dtsoft), outputdt(task.dthard), str(task.priority) + "\033[0m"])
         
     print(tabulate(outputlist))
     
