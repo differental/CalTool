@@ -7,7 +7,8 @@ import string
 
 def rand_string(length):
     letters = string.ascii_letters
-    return ''.join(random.choice(letters) for i in range(length))
+    digits = string.digits
+    return ''.join(random.choice(letters + digits) for i in range(length))
 
 class Task:
     def __init__(self, tid, dtsoft, dthard, name, priority, completed, delayed=0):
@@ -133,12 +134,12 @@ def showtasks(TaskList, withcomplete=False):
         
     print(tabulate(outputlist))
     
-    a = int(input("\n\n1. " + ("Hide" if withcomplete else "Show") + " Completed\n2. Add Task\n3. Modify Task\n4. Save\n5. Quit\n%> ") or 0)
+    a = int(input("\n\n1. " + ("Hide" if withcomplete else "Show") + " Completed\n2. Add Task\n3. Modify Task\n4. Save & Quit\n5. Force Quit\n%> ") or 0)
     return a
 
 def addtask(TaskList, TaskDict):
     name = input("Enter Task Name: ")
-    priority = int(input("Enter Task Priority: [10]") or 10)
+    priority = int(input("Enter Task Priority [10]: ") or 10)
     
     a = input("Allowed formats: 241231; 241231T2359; Mon-Sun\nEnter Hard Deadline: ")
     
@@ -157,8 +158,8 @@ def addtask(TaskList, TaskDict):
             if wday >= dtnow.weekday():
                 dthard = datetime(dtnow.year, dtnow.month, dtnow.day) + timedelta(days = wday - dtnow.weekday())
             else:
-                inpast = input("Add task that's due in the past? (T/F): ")
-                if inpast == "T":
+                inpast = input("Add task that's due in the past? (Y/N): ").strip().lower()
+                if inpast == "y":
                     dthard = datetime(dtnow.year, dtnow.month, dtnow.day) + timedelta(days = wday - dtnow.weekday())
                 else:
                     dthard = datetime(dtnow.year, dtnow.month, dtnow.day) + timedelta(days = wday + 7 - dtnow.weekday())
@@ -184,8 +185,8 @@ def addtask(TaskList, TaskDict):
                 if wday >= dtnow.weekday():
                     dtsoft = datetime(dtnow.year, dtnow.month, dtnow.day) + timedelta(days = wday - dtnow.weekday())
                 else:
-                    inpast = input("Add task that's due in the past? (T/F): ")
-                    if inpast == "T":
+                    inpast = input("Add task that's due in the past? (Y/N): ").strip().lower()
+                    if inpast == "y":
                         dtsoft = datetime(dtnow.year, dtnow.month, dtnow.day) + timedelta(days = wday - dtnow.weekday())
                     else:
                         dtsoft = datetime(dtnow.year, dtnow.month, dtnow.day) + timedelta(days = wday + 7 - dtnow.weekday())
@@ -194,9 +195,9 @@ def addtask(TaskList, TaskDict):
         print("Error: Soft deadline cannot happen after hard deadline. \nSetting to 3 days before hard deadline...")
         dtsoft = dthard + timedelta(days=-3)
     
-    tid = rand_string(6).lower()
+    tid = rand_string(3).lower()
     while tid in TaskDict.keys():
-        tid = rand_string(6).lower()
+        tid = rand_string(3).lower()
     
     NewTask = Task(tid, dtsoft, dthard, name, priority, False, 0)
     
@@ -314,6 +315,8 @@ while True:
         continue
     if option == 4:
         writetofile(TaskList, write)
-        
-    if option == 5:
         break
+    if option == 5:
+        a = input("Confirm? (Y/N): ").strip().lower()
+        if a == "y":
+            break
