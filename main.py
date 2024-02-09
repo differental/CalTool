@@ -86,21 +86,30 @@ def weekdaytonum(wod):
 
 def outputdt(dtevent):
     diff = dtevent - datetime.now()
-    if diff.days < -1:
+    
+    diffdays = diff.days if dtevent.hour > datetime.now().hour else diff.days + 1
+    
+    hourminu = datetime.strftime(dtevent, "%H:%M")
+    
+    if hourminu == "00:00":
+        hourminu = ""
+    
+    if diffdays < -1:
         return str(-diff.days) + "d ago"
-    if diff.days < 0:
-        return "Yesterday"
-    if diff.days == 0 and dtevent.day == datetime.now().day:
-        return "Today"
-    if diff.days == (0 or 1) and dtevent.day == (datetime.now()+timedelta(1)).day:
-        return "Tomorrow"
-    if diff.days < 7 and dtevent.weekday() > datetime.now().weekday():
-        return weekdaytostring(dtevent.weekday()) 
-    if diff.days < 7 and dtevent.weekday() <= datetime.now().weekday():
+    if diffdays < 0:
+        return "Yesterday " + hourminu
+    if diffdays == 0 and dtevent.day == datetime.now().day:
+        return "Today " + hourminu
+    if diffdays == (0 or 1) and dtevent.day == (datetime.now()+timedelta(1)).day:
+        return "Tomorrow " + hourminu
+    if diffdays < 7 and dtevent.weekday() > datetime.now().weekday():
+        return weekdaytostring(dtevent.weekday())
+    if diffdays < 7 and dtevent.weekday() <= datetime.now().weekday():
         return "Next " + weekdaytostring(dtevent.weekday()) 
-    if diff.days < 10:
+    if diffdays < 10:
         return "In " + str(diff.days) + "d"
-    return datetime.strftime(dtevent, "%Y-%m-%d %H:%M")
+    #return datetime.strftime(dtevent, "%Y-%m-%d %H:%M")
+    return datetime.strftime(dtevent, "%Y-%m-%d")
 
 def showtasks(TaskList, withcomplete=False):
     print("\n\n" + datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M") + ", " + weekdaytostring(datetime.now().weekday()))
