@@ -288,6 +288,8 @@ with open(read, "r+", encoding="UTF-8") as f:
     while item:
         item = item.strip()
         objects = item.split()
+        if not objects:
+            break
         tid = objects[0]
         dtsoft = datetime.strptime(objects[1], "%y%m%dT%H%M")
         dthard = datetime.strptime(objects[2], "%y%m%dT%H%M")
