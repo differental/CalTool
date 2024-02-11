@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from configparser import ConfigParser
 from tabulate import tabulate
 import argparse
 import random
@@ -11,20 +10,18 @@ def rand_string(length):
     return ''.join(random.choice(letters + digits) for i in range(length))
 
 class Task:
-    def __init__(self, tid, dtsoft, dthard, name, priority, completed, delayed=0):
+    def __init__(self, tid, dtsoft, dthard, name, priority, completion, delayed=0):
         self.id = tid
         self.dtsoft = dtsoft
         self.dthard = dthard
         self.name = name
         self.priority = priority
-        self.completed = completed
+        self.completion = completion # 0: current task; 1: completed; 2: cancelled
         self.delayed = delayed
 
     def __lt__(self, self2): # more important: greater value
-        if self.completed and not self2.completed:
-            return True
-        if not self.completed and self2.completed:
-            return False
+        if self.completion != self2.completion:
+            return self.completion > self2.completion
         
         statsa = self.status() if self.status() else 1
         statsb = self2.status() if self2.status() else 1
@@ -45,10 +42,7 @@ class Task:
         return not self < self2
     
     def __str__(self):
-        return f"{self.id} {self.name} {self.priority}\nSoft {datetime.strftime(self.dtsoft, "%y-%m-%d %H:%M")}\nHard {datetime.strftime(self.dthard, "%y-%m-%d %H:%M")}\n{"Completed" if self.completed else "Not Completed"}"
-
-    def togcomplete(self):
-        self.completed = not self.completed
+        return f"{self.id} {self.name} {self.priority}\nSoft {datetime.strftime(self.dtsoft, "%y-%m-%d %H:%M")}\nHard {datetime.strftime(self.dthard, "%y-%m-%d %H:%M")}\n{"Completed" if self.completion == 1 else "Not Completed" if self.completion == 0 else "Cancelled"}"
 
     def extend(self, diff, mode, skipadd=False):
         """
@@ -64,7 +58,9 @@ class Task:
         self.priority += delta
         
     def status(self):
-        if self.completed:
+        if self.completion == 2:
+            return -2 #"Cancelled"
+        if self.completion == 1:
             return -1 #"Completed"
         softdiff = self.dtsoft - datetime.now()
         harddiff = self.dthard - datetime.now()
@@ -111,9 +107,18 @@ def outputdt(dtevent):
     #return datetime.strftime(dtevent, "%Y-%m-%d %H:%M")
     return datetime.strftime(dtevent, "%Y-%m-%d")
 
-def showtasks(TaskList, withcomplete=False):
+def showtasks(TaskList, withcomplete=False, withcancel=False):
     print("\n\n" + datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M") + ", " + weekdaytostring(datetime.now().weekday()))
-    print("Current Tasks:" if not withcomplete else "All Tasks:")
+    
+    if withcomplete and withcancel:
+        print("All Tasks:")
+    elif withcomplete:
+        print("Current and Completed Tasks:")
+    elif withcancel:
+        print("Current and Cancelled Tasks:")
+    else:
+        print("Current Tasks:")
+        
     outputlist = [["ID", "Name", "Soft Deadline", "Hard Deadline", "Priority"]]
     
     TaskList = sorted(TaskList, reverse=True)
@@ -123,19 +128,27 @@ def showtasks(TaskList, withcomplete=False):
         softdiff = task.dtsoft - datetime.now()
         harddiff = task.dthard - datetime.now()
         
-        if not withcomplete and task.completed:
+        if not withcomplete and task.completion == 1:
+            continue
+        if not withcancel and task.completion == 2:
             continue
         
-        if softdiff.days < 0 and harddiff.days >= 0: # red
+        if task.completion == 2:
+            outputlist.append(["\033[37m" + task.id, task.name, outputdt(task.dtsoft), outputdt(task.dthard), str(task.priority) + "\033[0m"])
+        
+        elif task.completion == 1:
+            outputlist.append(["\033[32m" + task.id, task.name, outputdt(task.dtsoft), outputdt(task.dthard), str(task.priority) + "\033[0m"])
+        
+        elif softdiff.days < 0 and harddiff.days >= 0: # red
             outputlist.append(["\033[91m" + task.id, task.name, outputdt(task.dtsoft), outputdt(task.dthard), str(task.priority) + "\033[0m"])
         
         elif harddiff.days < 0: # red & bold & underline
-            outputlist.append(["\033[1m\033[91m\033[4m" + task.id, task.name, outputdt(task.dtsoft), outputdt(task.dthard), str(task.priority) + "\033[0m\033[0m\033[0m"])
+            outputlist.append(["\033[1m\033[91;103m\033[4m" + task.id, task.name, outputdt(task.dtsoft), outputdt(task.dthard), str(task.priority) + "\033[0m\033[0m\033[0m"])
         
         elif softdiff.days < 3 or task.delayed >= 2: # yellow
             outputlist.append(["\033[93m" + task.id, task.name, outputdt(task.dtsoft), outputdt(task.dthard), str(task.priority) + "\033[0m"])
         
-        elif task.delayed: # ok cyan
+        elif task.delayed: # ok blue
             outputlist.append(["\033[96m" + task.id, task.name, outputdt(task.dtsoft), outputdt(task.dthard), str(task.priority) + "\033[0m"])
         
         else: # ok green
@@ -143,7 +156,7 @@ def showtasks(TaskList, withcomplete=False):
         
     print(tabulate(outputlist))
     
-    a = int(input("\n\n1. " + ("Hide" if withcomplete else "Show") + " Completed\n2. Add Task\n3. Modify Task\n4. Save & Quit\n5. Force Quit\n%> ") or 0)
+    a = int(input("\n\n1. " + ("Hide" if withcomplete else "Show") + " Completed\n2. " + ("Hide" if withcancel else "Show") + " Cancelled\n3. Add Task\n4. Modify Task\n5. Save & Quit\n6. Force Quit\n%> ") or 0)
     return a
 
 def addtask(TaskList, TaskDict):
@@ -227,12 +240,13 @@ def writetofile(TaskList, file):
                     datetime.strftime(task.dtsoft, "%y%m%dT%H%M") + " " +
                     datetime.strftime(task.dthard, "%y%m%dT%H%M") + " " +
                     task.name.replace(" ", "_") + " " + str(task.priority) + " " +
-                    str(task.completed) + " " + str(task.delayed) + "\n")
+                    str(task.delayed) + "\n")
     return
 
 def modifytask(TaskList, TaskDict, tid):
+    keyset = set(TaskDict.keys())
     tid = tid.strip().lower()
-    if not tid in TaskDict.keys():
+    if not tid in keyset:
         print("\nTID not found. Reloading")
         return TaskList, TaskDict
     task, listindex = TaskDict[tid]
@@ -241,13 +255,46 @@ def modifytask(TaskList, TaskDict, tid):
         return TaskList, TaskDict
     #print(task.id, task.dtsoft, task.dthard, task.name, task.priority, task.completed, task.delayed)
 
-    a = int(input("\n" + str(task) + "\n1. Toggle Completion\n2. Change name\n3. Change priority\n4. Delay task\n5. Return\n%> ") or 5)
+    a = int(input("\n" + str(task) + "\n1. Toggle completion\n2. Change name\n3. Change priority\n4. Delay task\n5. Toggle cancellation\n6. Return\n%> ") or 6)
     
-    if a == 5:
+    if a == 6:
         return TaskList, TaskDict
     
     if a == 1:
-        task.togcomplete()
+        if task.completion == 2:
+            print("Error: Cannot complete a cancelled task")
+            return TaskList, TaskDict
+        elif task.completion == 0:
+            tidext = rand_string(3).lower()
+            while task.id + tidext in keyset:
+                tidext = rand_string(3).lower()
+            task.id += tidext
+            print(tidext, task.id)
+            task.completion = 1
+        elif task.completion == 1:
+            tidtemp = task.id[0:3]
+            while tidtemp in keyset:
+                tidtemp = rand_string(3).lower()
+            task.id = tidtemp
+            task.completion = 0
+        
+    if a == 5:
+        if task.completion == 1:
+            print("Error: Cannot cancel a completed task")
+            return TaskList, TaskDict
+        elif task.completion == 0:
+            tidext = rand_string(2).lower()
+            while task.id + tidext in keyset:
+                tidext = rand_string(2).lower()
+            task.id += tidext
+            task.completion = 2
+        elif task.completion == 2:
+            tidtemp = task.id[0:3]
+            while tidtemp in keyset:
+                tidtemp = rand_string(3).lower()
+            task.id = tidtemp
+            task.completion = 0
+    
     if a == 2:
         task.name = input("Enter New Name: ") or task.name
     if a == 3:
@@ -262,7 +309,8 @@ def modifytask(TaskList, TaskDict, tid):
         task.extend(timedelta(days=b, seconds=c), mode-1, skipadd=False)
     
     TaskList[listindex] = task
-    TaskDict[tid] = (task, listindex)
+    TaskDict.pop(tid)
+    TaskDict[task.id] = (task, listindex)
     return TaskList, TaskDict
 
 parser = argparse.ArgumentParser(description="""
@@ -291,14 +339,20 @@ with open(read, "r+", encoding="UTF-8") as f:
         if not objects:
             break
         tid = objects[0]
+        
+        completion = 0 if len(tid) == 3 else 1 if len(tid) == 6 else 2
+        # length 3 -> completion 0, current task
+        # length 6 -> completion 1, completed
+        # length 5 -> completion 2, cancelled
+        
         dtsoft = datetime.strptime(objects[1], "%y%m%dT%H%M")
         dthard = datetime.strptime(objects[2], "%y%m%dT%H%M")
         name = objects[3].replace("_", " ")
         priority = int(objects[4])
-        completed = bool(objects[5] == "True")
-        delayed = int(objects[6]) # times that it has been delayed
+        #completed = bool(objects[5] == "True")
+        delayed = int(objects[5]) # times that it has been delayed
 
-        NewTask = Task(tid, dtsoft, dthard, name, priority, completed, delayed)
+        NewTask = Task(tid, dtsoft, dthard, name, priority, completion, delayed)
     
         if tid in TaskDict.keys():
             print(f"Error loading task:\n{tid} {name}\nTID exists, skipping...")
@@ -309,25 +363,24 @@ with open(read, "r+", encoding="UTF-8") as f:
         item = f.readline()
 
 withcomplete = False
+withcancel = False
 
 while True:
-    option = showtasks(TaskList, withcomplete)
+    option = showtasks(TaskList, withcomplete, withcancel)
     #print(option)
-    if option == 0:
-        continue
+    #if option == 0:
     if option == 1:
         withcomplete = not withcomplete
-        continue
     if option == 2:
-        TaskList, TaskDict = addtask(TaskList, TaskDict)
-        continue
+        withcancel = not withcancel
     if option == 3:
-        TaskList, TaskDict = modifytask(TaskList, TaskDict, input("Enter tid: "))
-        continue
+        TaskList, TaskDict = addtask(TaskList, TaskDict)
     if option == 4:
+        TaskList, TaskDict = modifytask(TaskList, TaskDict, input("Enter tid: "))
+    if option == 5:
         writetofile(TaskList, write)
         break
-    if option == 5:
+    if option == 6:
         a = input("Confirm? (Y/N): ").strip().lower()
         if a == "y":
             break

@@ -1,2 +1,3 @@
 personal.txt
-tst.txt
+personal-backup.txt
+*.old
