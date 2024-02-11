@@ -233,18 +233,18 @@ def writetofile(TaskList, file):
 def modifytask(TaskList, TaskDict, tid):
     tid = tid.strip().lower()
     if not tid in TaskDict.keys():
-        print("TID not found. Reloading")
-        return
+        print("\nTID not found. Reloading")
+        return TaskList, TaskDict
     task, listindex = TaskDict[tid]
     if TaskList[listindex] != task:
-        print("Unknown Error. Quitting")
-        return
-    print(task.id, task.dtsoft, task.dthard, task.name, task.priority, task.completed, task.delayed)
-    
-    a = int(input("\n\n1. Toggle Completion\n2. Change name\n3. Change priority\n4. Delay task\n5. Return\n%> ") or 5)
+        print("\nUnknown Error. Quitting")
+        return TaskList, TaskDict
+    #print(task.id, task.dtsoft, task.dthard, task.name, task.priority, task.completed, task.delayed)
+
+    a = int(input("\n" + str(task) + "\n1. Toggle Completion\n2. Change name\n3. Change priority\n4. Delay task\n5. Return\n%> ") or 5)
     
     if a == 5:
-        return
+        return TaskList, TaskDict
     
     if a == 1:
         task.togcomplete()
@@ -253,10 +253,10 @@ def modifytask(TaskList, TaskDict, tid):
     if a == 3:
         task.prioritise(int(input("Enter New Priority: ") or task.priority) - task.priority)
     if a == 4:
-        b = int(input("Delay days: ") or 0)
-        c = 3600 * int(input("Delay hours: ") or 0)
-        c += 60 * int(input("Delay mins: ") or 0)
-        c += int(input("Delay seconds: ") or 0)
+        b = int(input("Delay days [0]: ") or 0)
+        c = 3600 * int(input("Delay hours [0]: ") or 0)
+        c += 60 * int(input("Delay mins [0]: ") or 0)
+        c += int(input("Delay seconds [0]: ") or 0)
         mode = int(input("Delay [1]Soft [2]Hard [3]Both: ") or 3)
         #skipadd = bool(int(input("Not add to count?") or 0))
         task.extend(timedelta(days=b, seconds=c), mode-1, skipadd=False)
