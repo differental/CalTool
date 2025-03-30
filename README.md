@@ -1,3 +1,5 @@
 # CalTool
 
-Fancy command-line task tool. Personal & WIP.
+A fancy command-line task tool for personal use.
+
+No longer in development
